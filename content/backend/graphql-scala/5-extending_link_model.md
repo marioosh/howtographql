@@ -76,3 +76,79 @@ def * = (id, url, description, createdAt) <> ((Link.apply _).tupled, Link.unappl
 
 
 ### Define custom scalar for DateTime
+
+Sangria supports all standard GraphQL scalars like `String`, `Int`, etc. In addition you can find scalars for types like `Long`, `BigInt` or `BigDecimal`. There are a lot of them actually. But, probably it still too less to cover all your needs.
+Like in our example, we're using `DateTime` type, and there are no built-in scalar for such type.
+We have to make our own to make able present it as string (and eventually take back from string input and make auto conversion to our type).
+
+Let's write a scalar that converts `String` and `DateTime`. In both ways.
+
+<Instruction>
+
+In `GraphQLSchema` file add following code:
+
+```scala
+implicit val GraphQLDateTime = ScalarType[DateTime](//1
+  "DateTime",//2
+  coerceOutput = (dt, _) => dt.toString, //3
+  coerceInput = { //4
+    case StringValue(dt, _,_ ) => DateTime.fromIsoDateTimeString(dt).toRight(DateTimeCoerceViolation)
+    case _ => Left(DateTimeCoerceViolation)
+  },
+  coerceUserInput = { //5
+    case s: String => DateTime.fromIsoDateTimeString(s).toRight(DateTimeCoerceViolation)
+    case _ => Left(DateTimeCoerceViolation)
+  }
+)
+
+```
+</Instruction>
+
+1. Use `implicit` because it's implicitly has to be in scope
+1. `"DateTime"` is a name to this scalar. It will be visible in schema with that name.
+1. `coerceOutput` converts our type to string. It will be used to produce output data.
+1. `coerceInput` needs partial function with `Value` as single argument. Such value could be of many types. In our case we're parsing only from `StringValue` but you can also add `LongType` to able converts from timestamp, so user will have option what to choose.
+1. `coerceUserInput` converts Literal which almost always is a String.
+
+Both functions `coerceInput` and `coerceUserInput` should responds with `Either`. The correct (right) value should consists object of expected type. In case of failure, left value should contain `Violation` subtype. Sangria provides many `Violation` subtypes, but in the code above you can see I used `DateTimeCoerceViolation`.
+Let's implement this.
+
+<Instruction>
+
+In `GraphQLSchema` file add following definition:
+
+```scala
+  case object DateTimeCoerceViolation extends Violation {
+    override def errorMessage: String = "Error parsing DateTime"
+  }
+
+```
+
+</Instruction>
+
+Now when you'll add `createAt` field to the query, you should get proper response. For example on query:
+
+```graphql
+query {
+
+  link(id: 1){
+    	id
+    	url
+    	createdAt
+  	}
+  }
+```
+You will get a response:
+```JSON
+{
+  "data": {
+    "link": {
+      "id": 1,
+      "url": "http://howtographql.com",
+      "createdAt": "2017-09-12T00:00:00"
+    }
+  }
+}
+```
+
+Now you know the basics. In the next chapter you will add additional models. We will extract some common parts as interface.
