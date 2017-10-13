@@ -283,4 +283,70 @@ query {
 
 ### Finding a common parts
 
-If you will see into this code more detaily
+If you will see once again to the code, you will find out the parts that are very similar. Like `HasId` for all three types:
+
+```scala
+implicit val linkHasId = HasId[Link, Int](_.id)
+implicit val userHasId = HasId[User, Int](_.id)
+implicit val voteHasId = HasId[Vote, Int](_.id)
+```
+
+What if you want to add more entities? You will spread those code even more.
+
+The solution for this is an interface. We can provide an interface that will be extended by any on the entities, and then you can make only one `HasId`, for example.
+
+<Instrunction>
+
+Create trait `Identifable`:
+
+```scala
+trait Indentifable {
+  val id: Int
+}
+```
+
+</Instruction>
+
+And then extend this trait by all of those classes like:
+
+```scala
+case class User(...) extends Identifiable
+```
+
+</Instruction>
+
+Now we can replace all above `HasId` type classes with the single one:
+
+<Instruction>
+
+Remove `linkHasId`, `userHasId` and `voteHasId`, and add companion object to the Identifiable trait:
+
+```scala
+object Identifiable {
+    implicit def hasId[T <: Identifiable]: HasId[T, Int] = HasId(_.id)
+}
+```
+
+</Instruction>
+
+When you will keep `implicit HasId` type converted in the companion object it will be accessible on need.
+
+Now, let's create an interface from GraphQL point of view.
+
+<Instruction>
+
+Change the `LinkType` for the following:
+
+```scala
+implicit val LinkType = deriveObjectType[Unit, Link](
+    Interfaces(IdentifiableType)
+)
+```
+
+</Instruction>
+
+Add also such field to the object type for `User` and `Vote`.
+
+Now if will see on schema definition in graphiql console you will see there are provided three models with this common interface.
+
+Ok, thats all for this chapter. In the next one you will learn about relations.
