@@ -287,4 +287,4 @@ Field("createVote",
 
 </Instruction>
 
-Now you know how to send data to the server. You will use this knowledge when we will implement authentication loginc in the next chapter.
+Now you know how to send data to the server. You will use this knowledge when we will implement authentication and authorization logic in the next chapter.
